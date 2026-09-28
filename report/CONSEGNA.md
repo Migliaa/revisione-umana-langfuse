@@ -54,7 +54,8 @@ diventa visibile nel markup (titolo pagina, ecc.) senza controllarlo prima.
   uno strumento eseguibile, non hostato (deciso in `CONTEXT.md`: il deploy vero è rimandato).
 - Non c'è login né invio email reale nel prodotto — scelte esplicite, non lacune da segnalare
   come limite.
-- Repo: https://github.com/Migliaa/InterfacciaLangfuse.
+- Repo: https://github.com/Migliaa/revisione-umana-langfuse (rinominato il 2026-09-29, era
+  `InterfacciaLangfuse`; GitHub reindirizza il vecchio URL).
 
 ## Da aggiornare in `SitoPersonale/PROGETTI.md`
 
