@@ -4,9 +4,10 @@ Per la sessione del sito. Tutto quello che serve sta in `Progetti/giudice/report
 
 ## Nome del prodotto
 
-Il prodotto va presentato come **"Ultima Parola"**, non come "giudice". "giudice" resta solo il
-nome interno della cartella e del repository (rinominarli non vale l'attrito con link e commit
-esistenti) — non deve comparire nel testo rivolto al pubblico del sito.
+Il prodotto va presentato come **"Revisione Umana su Langfuse"**, non come "giudice" né come
+"Ultima Parola" (nome precedente, scartato il 2026-09-29 perché suonava da slogan invece di dire
+cosa fa il prodotto). "giudice" resta solo il nome interno della cartella locale — non deve
+comparire nel testo rivolto al pubblico del sito.
 
 ## Formato di consegna
 
@@ -57,5 +58,5 @@ diventa visibile nel markup (titolo pagina, ecc.) senza controllarlo prima.
 
 ## Da aggiornare in `SitoPersonale/PROGETTI.md`
 
-La riga va aggiornata a "completato", col nome **"Ultima Parola"** — la sessione del sito decide
-la formulazione esatta.
+La riga va aggiornata a "completato", col nome **"Revisione Umana su Langfuse"** (non più "Ultima
+Parola") — la sessione del sito decide la formulazione esatta.

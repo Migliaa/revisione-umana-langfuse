@@ -169,3 +169,13 @@ Una riga per sessione, memoria grezza del processo. Non letto dalla sessione del
   popup) — 22 totali, `tsc`/`next build` puliti. Verificato a schermo in modalità reale
   (popup ed etichetta corretti); la modalità demo verificata solo via test automatico, non a
   schermo, per non dover toccare temporaneamente il file `.env` con le credenziali reali.
+- **2026-09-29, rebranding e README, dalla sessione `colloquio-ai-engineer`/progetti.** Andrea ha
+  segnalato "Ultima Parola" da rivedere (suonava da slogan, non diceva cosa fa) mentre ripassava
+  il progetto per il colloquio. Nuovo nome scelto tra tre opzioni proposte: **"Revisione Umana su
+  Langfuse"**. Aggiornati `report/report.md`, `report/CONSEGNA.md` (segnala il cambio anche alla
+  sessione del sito, che deve aggiornare `PROGETTI.md`) e `frontend/app/layout.tsx` (titolo pagina
+  e intestazione) — nessuna stringa "Ultima Parola" nei test. Aggiunto `README.md` in root:
+  mancava del tutto, e il repository è pubblico su GitHub senza descrizione né README — chi
+  arrivava da un link vedeva solo cartelle. Non ancora commitato/pushato: in attesa di conferma di
+  Andrea prima di toccare il repository pubblico. Discorso di studio per il project deep dive
+  scritto in `../colloquio-ai-engineer/progetti/giudice.md`.

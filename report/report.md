@@ -1,4 +1,4 @@
-# Ultima Parola
+# Revisione Umana su Langfuse
 
 **Quale problema risolve:**
 Un'automazione che genera contenuto rivolto a un cliente — preventivo, risposta, documento —

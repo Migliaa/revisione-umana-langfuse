@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ultima Parola — revisione preventivi",
+  title: "Revisione Umana su Langfuse — revisione preventivi",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it">
       <body>
         <header className="intestazione">
-          <strong>Ultima Parola</strong>
+          <strong>Revisione Umana su Langfuse</strong>
           <span className="sottotitolo">controllo umano su output generati da agenti</span>
         </header>
         {children}
