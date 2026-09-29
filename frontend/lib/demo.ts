@@ -62,7 +62,7 @@ export const datiDemo: ItemDaRivedere[] = [
   },
 ];
 
-/** Nessuna scrittura reale: cicla sui dati fittizzi in memoria, così la demo non finisce mai e
+/** Nessuna scrittura reale: cicla sui dati fittizi in memoria, così la demo non finisce mai e
  * nessun visitatore scrive per sbaglio su un progetto Langfuse vero. */
 export async function registraGiudizioDemo(giudizio: GiudizioUmano): Promise<ItemDaRivedere | null> {
   const indiceAttuale = datiDemo.findIndex((item) => item.idTraccia === giudizio.idTraccia);

@@ -179,3 +179,16 @@ Una riga per sessione, memoria grezza del processo. Non letto dalla sessione del
   arrivava da un link vedeva solo cartelle. Non ancora commitato/pushato: in attesa di conferma di
   Andrea prima di toccare il repository pubblico. Discorso di studio per il project deep dive
   scritto in `../colloquio-ai-engineer/progetti/giudice.md`.
+- **2026-09-29, prova della demo a schermo.** Prima esecuzione reale della modalità demo in un
+  browser: la pagina rispondeva 500 ("Functions cannot be passed directly to Client Components"),
+  perché `registraGiudizioDemo` era una funzione normale passata da un Server Component a un
+  componente client; i 22 test non lo vedevano perché non eseguono il runtime di Next. Corretto
+  esponendola come server action in `lib/azioni.ts` (`"use server"`). Verificato con clic reali:
+  popup, compilazione dei quattro giudizi, registrazione e passaggio al secondo item. Corretto
+  anche il refuso "fittizzi" (banner e commenti). `next dev` generava in `frontend/` due file
+  `AGENTS.md` e `CLAUDE.md` (regole per agenti): rimossi e disattivati con `agentRules: false` in
+  `next.config.ts`, perché un `CLAUDE.md` non voluto è lo stesso problema già visto con `claude -p`.
+  Aggiunto `docs/schermata.png` (Chrome headless, 1440 px, secondo item della demo) e inserito nel
+  README. Nota per la prossima volta: le credenziali reali stanno in `../.env` e vengono caricate
+  da `next.config.ts`; per provare la demo bisogna azzerare le tre variabili d'ambiente
+  `LANGFUSE_*` (variabili vuote, perché `loadEnvFile` non sovrascrive quelle già impostate).

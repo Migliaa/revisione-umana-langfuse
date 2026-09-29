@@ -11,6 +11,6 @@ try {
   // .env assente (es. in un ambiente dove le variabili sono già impostate altrove): si prosegue.
 }
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = { agentRules: false };
 
 export default nextConfig;

@@ -5,9 +5,7 @@ agente — qui, preventivi e messaggi cliente — prima che raggiungano il clien
 collegamento con Langfuse così un ingegnere AI può usare quei verdetti per ricalibrare l'agente e
 il giudice automatico che lo precede.
 
-<!-- screenshot: schermata a tre colonne (richiesta, preventivo, verdetti automatici) + area di
-lavoro sotto (giudizio, messaggio editabile) — va catturata lanciando `npm run dev` in
-`frontend/` con un item di prova in coda -->
+![Interfaccia in modalità demo: richiesta, preventivo e verdetti automatici in alto, area di giudizio sotto](docs/schermata.png)
 
 ## Architettura
 
@@ -42,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Senza credenziali Langfuse configurate parte in **modalità demo**: tre item fittizzi al posto di
+Senza credenziali Langfuse configurate parte in **modalità demo**: tre item fittizi al posto di
 un errore, con un banner che lo dichiara esplicitamente. Con un progetto Langfuse vero, le
 variabili d'ambiente (`LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`) attivano la
 modalità reale.

@@ -20,7 +20,7 @@ di un blocco da home.
 ## Provalo tu stesso
 
 L'interfaccia ha una **modalità demo**: se non trova credenziali Langfuse configurate (caso
-normale per chiunque clona il repo senza un proprio progetto Langfuse) mostra tre item fittizzi
+normale per chiunque clona il repo senza un proprio progetto Langfuse) mostra tre item fittizi
 al posto di un errore, con un banner che lo dichiara esplicitamente. Chi vuole provarlo — un
 recruiter, chiunque legga il sito — clona il repo ed esegue `npm install && npm run dev` dentro
 `frontend/`: nessuna configurazione richiesta. Un popup all'apertura spiega cosa succede dietro
@@ -41,11 +41,9 @@ al taglio del sito.
 
 ## Nessuna figura
 
-Il report non ha figure. Se la pagina del sito ne vuole una, uno screenshot reale
-dell'interfaccia (schermata a tre colonne + area di lavoro, con un item di prova) comunicherebbe
-più di un diagramma — non esiste ancora, andrebbe catturato lanciando `npm run dev` in
-`frontend/` con un item in coda. Attenzione a non far comparire "giudice" nello screenshot se
-diventa visibile nel markup (titolo pagina, ecc.) senza controllarlo prima.
+Il report non ha figure. Se la pagina del sito ne vuole una, esiste uno screenshot reale
+dell'interfaccia in modalità demo (`docs/schermata.png`, 1440 px), in cui compare solo il nome
+"Revisione Umana su Langfuse".
 
 ## Cose da sapere
 
