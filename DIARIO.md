@@ -192,3 +192,19 @@ Una riga per sessione, memoria grezza del processo. Non letto dalla sessione del
   README. Nota per la prossima volta: le credenziali reali stanno in `../.env` e vengono caricate
   da `next.config.ts`; per provare la demo bisogna azzerare le tre variabili d'ambiente
   `LANGFUSE_*` (variabili vuote, perché `loadEnvFile` non sovrascrive quelle già impostate).
+- **2026-09-29, Langfuse popolato con 10 richieste.** Aggiunte 7 richieste a `backend/data/richieste.json`
+  (10 in tutto) e lanciata la pipeline sul progetto Langfuse vero. Nel primo lancio il giudice
+  automatico segnalava "errori di codifica" in 7 messaggi su 10: la causa era
+  `subprocess.run(text=True)` in `claude_cli.py`, che su Windows decodifica in cp1252 l'output UTF-8
+  di Claude ("€" diventava "â‚¬", "à" diventava "Ã" più uno spazio); corretto con `encoding="utf-8"`
+  e un test (42 test backend). Cancellati i dati del lancio sbagliato (10 voci di coda e 7 tracce
+  create quel giorno) e rilanciato con il nuovo parametro `lotto` (`python run_pipeline.py
+  2026-09-29`), perché l'id della traccia deriva dall'id della richiesta e un secondo lancio senza
+  lotto aggiungerebbe osservazioni e punteggi alle stesse tracce. Risultato: giudice automatico
+  "da rivedere" sul preventivo in 2 richieste su 10, "sì" sul messaggio in 10 su 10. Giudizi
+  umani di prova inseriti da Claude attraverso l'interfaccia vera su 6 richieste (24 punteggi, di cui
+  un disaccordo voluto con correzione del messaggio salvata nei metadati); 4 richieste lasciate in
+  coda per la dimostrazione dal vivo. Le scritture umane sono idempotenti: un doppio invio della
+  stessa richiesta non ha creato duplicati. I punteggi compaiono in Langfuse con qualche secondo
+  di ritardo. Restano nella coda 4 voci vecchie (14-15 settembre), e le tracce delle prime tre
+  richieste di quel giorno hanno osservazioni doppie per il lancio sbagliato della mattina.
