@@ -21,7 +21,8 @@ claude /login
 ## Eseguire la pipeline
 
 ```bash
-python run_pipeline.py
+python run_pipeline.py            # tracce con id derivato dalla richiesta
+python run_pipeline.py 2026-09-29 # un lotto nuovo: tracce distinte a ogni lancio
 ```
 
 Elabora tutte le richieste in `data/richieste.json` usando il catalogo in `data/catalogo.json`

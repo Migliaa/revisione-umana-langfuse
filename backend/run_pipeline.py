@@ -3,7 +3,11 @@
 automatico, e accoda tutto su Langfuse pronto per la revisione umana.
 
 Uso:
-    python run_pipeline.py
+    python run_pipeline.py [lotto]
+
+Le tracce hanno un id deterministico derivato dall'id della richiesta: rilanciare senza `lotto`
+aggiungerebbe osservazioni e punteggi alle stesse tracce. Con `lotto` (es. `2026-09-29`) l'id
+diventa `<lotto>-<id richiesta>` e ogni lancio produce tracce nuove.
 
 Richiede LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY come variabili d'ambiente
 (vedi .env.example alla radice del repo) e un login valido di `claude` (abbonamento, non chiave
@@ -40,6 +44,9 @@ def main() -> int:
 
     catalogo = carica_catalogo()
     richieste = carica_richieste()
+    if len(sys.argv) > 1:
+        lotto = sys.argv[1]
+        richieste = [{**r, "id": f"{lotto}-{r['id']}"} for r in richieste]
     genera_documento = functools.partial(genera_documento_preventivo, profilo_azienda=carica_profilo_azienda())
 
     print(f"Elaboro {len(richieste)} richieste...")

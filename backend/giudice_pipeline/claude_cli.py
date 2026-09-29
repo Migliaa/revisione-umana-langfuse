@@ -17,7 +17,8 @@ def genera_testo(prompt: str, model: str = "sonnet", timeout: int = 180) -> str:
             # l'autenticazione via abbonamento (--bare forza la chiave API).
             ["claude", "--safe-mode", "-p", prompt, "--output-format", "json", "--model", model],
             capture_output=True,
-            text=True,
+            # UTF-8 esplicito: su Windows il default è cp1252 e "€" diventa "â‚¬", "à" diventa "Ã ".
+            encoding="utf-8",
             timeout=timeout,
         )
     except FileNotFoundError as errore:

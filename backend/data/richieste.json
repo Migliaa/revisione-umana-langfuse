@@ -10,5 +10,33 @@
   {
     "id": "r3-pulizia",
     "testo": "Pulizia straordinaria fine cantiere per un negozio di 40 mq, da fare in un weekend."
+  },
+  {
+    "id": "r4-camera",
+    "testo": "Devo ridipingere una camera da letto di 16 mq, pareti già in buone condizioni, pittura bianca lavabile. Va bene anche a metà mese prossimo."
+  },
+  {
+    "id": "r5-stuccatura",
+    "testo": "Ho un soggiorno di 45 mq con pareti molto rovinate: serve stuccatura e rasatura prima di tinteggiare in bianco lavabile. Proteggete bene pavimento e mobili."
+  },
+  {
+    "id": "r6-due-finestre",
+    "testo": "Vorrei cambiare 2 finestre del bagno con doppio vetro, senza bisogno di smaltire i vecchi infissi: li porto via io."
+  },
+  {
+    "id": "r7-solo-pulizia",
+    "testo": "Ristrutturazione appena finita in un ufficio di 120 mq: mi serve solo la pulizia di fine cantiere, in giornata lavorativa."
+  },
+  {
+    "id": "r8-fuori-catalogo",
+    "testo": "Vorrei anche rifare l'impianto elettrico di una cucina di 12 mq e tinteggiarla di bianco lavabile."
+  },
+  {
+    "id": "r9-weekend-finestre",
+    "testo": "Sostituzione di 3 finestre con doppio vetro, smaltimento vecchi infissi incluso, da eseguire in un weekend."
+  },
+  {
+    "id": "r10-condominio",
+    "testo": "Tinteggiatura di un vano scale condominiale di 90 mq in pittura bianca lavabile, con rasatura delle pareti più danneggiate (circa 30 mq)."
   }
 ]

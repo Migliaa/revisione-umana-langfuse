@@ -30,6 +30,13 @@ def test_genera_testo_usa_il_modello_richiesto(mock_run):
 
 
 @patch("giudice_pipeline.claude_cli.subprocess.run")
+def test_genera_testo_decodifica_l_output_come_utf8(mock_run):
+    mock_run.return_value = _completed({"is_error": False, "result": "1.200 € più"})
+    genera_testo("un prompt")
+    assert mock_run.call_args.kwargs.get("encoding") == "utf-8", "senza, su Windows il testo arriva in cp1252"
+
+
+@patch("giudice_pipeline.claude_cli.subprocess.run")
 def test_genera_testo_solleva_errore_se_is_error(mock_run):
     mock_run.return_value = _completed({"is_error": True, "result": "OAuth session expired"})
     with pytest.raises(ErroreClaudeCli, match="OAuth session expired"):
