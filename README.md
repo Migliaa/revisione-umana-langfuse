@@ -24,9 +24,11 @@ richiesta cliente → esecutore (agente) → giudice automatico (LLM-as-judge) �
 - **Giudice automatico**: valuta preventivo e messaggio separatamente, prima che arrivino
   all'umano.
 - **Giudice umano** (questa interfaccia): vede richiesta, preventivo, messaggio e i verdetti
-  automatici affiancati; registra quattro punteggi distinti — esito e accordo col giudice
-  automatico, per ciascuna delle due dimensioni — invece di un verdetto unico, per poter isolare
-  se a sbagliare è l'esecutore o il giudice automatico.
+  automatici affiancati. Per ciascuna delle due dimensioni (preventivo, messaggio) registra due
+  giudizi separati: l'esito (`verdetto_preventivo`, `verdetto_messaggio`: sì, no o da rivedere,
+  con commento) e l'accordo con il giudice automatico (`accordo_preventivo`,
+  `accordo_messaggio`: sì o no). Sono quattro punteggi in tutto, così si può distinguere se ha
+  sbagliato l'esecutore o il giudice automatico senza dedurlo da un commento libero.
 - Backend Python (SDK Langfuse) per esecutore, giudice automatico e inserimento in coda.
   Frontend Next.js/TypeScript, adattato dal template ufficiale
   [`langfuse-examples/custom-annotation-ui`](https://github.com/langfuse/langfuse-examples/tree/main/applications/custom-annotation-ui),
@@ -47,8 +49,8 @@ modalità reale.
 
 ## Decisioni degne di nota
 
-- **Quattro punteggi separati, non un verdetto unico** — permette di distinguere se sbaglia
-  l'esecutore o il giudice automatico invece di dedurlo da un commento libero.
+- **Esito e accordo come punteggi separati, per ciascuna dimensione** — permette di distinguere se
+  sbaglia l'esecutore o il giudice automatico invece di dedurlo da un commento libero.
 - **Layout scelto dopo un prototipo throwaway**, non a tavolino: tre varianti provate con dati
   finti (stack mobile a card, annotazione inline riga per riga, tre colonne + area di lavoro),
   scelta la terza perché il giudice umano userebbe lo strumento più volte al giorno da postazione
