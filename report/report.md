@@ -48,6 +48,6 @@ il giudice segnalava errori di codifica in 7 messaggi su 10, dovuti a una decodi
 dell'output nella pipeline; dopo la correzione sono 0 su 10.
 
 **Demo e codice:**
-Demo online: [revisione-umana-langfuse-demo.vercel.app](https://revisione-umana-langfuse-demo.vercel.app) (quattro output reali della pipeline, nessun salvataggio).
+Demo online: [revisione-umana-langfuse-demo.vercel.app](https://revisione-umana-langfuse-demo.vercel.app) (quattro output reali della pipeline, nessun salvataggio). Esempio di traccia su Langfuse, pubblica: [link](https://cloud.langfuse.com/project/cmu1agdkj00syad0dyas2site/traces/75428e75cb28dd0ff4011fa028ea2e39).
 [github.com/Migliaa/revisione-umana-langfuse](https://github.com/Migliaa/revisione-umana-langfuse):
 backend Python (SDK Langfuse 4.15.2, 42 test), interfaccia Next.js 16 e React 19 (22 test), MIT.

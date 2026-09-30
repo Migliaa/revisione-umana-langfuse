@@ -4,6 +4,8 @@ Interfaccia web con cui un revisore senza formazione tecnica giudica gli output 
 
 **Demo online:** https://revisione-umana-langfuse-demo.vercel.app — quattro output reali della pipeline su richieste inventate; i giudizi non vengono salvati da nessuna parte.
 
+**Come appare su Langfuse:** [traccia pubblica di esempio](https://cloud.langfuse.com/project/cmu1agdkj00syad0dyas2site/traces/75428e75cb28dd0ff4011fa028ea2e39) (cucina con impianto elettrico non a catalogo). Nell'albero a sinistra si aprono `esecutore` e `giudice-automatico`; nella scheda «Scores» ci sono i quattro punteggi del revisore, con il disaccordo sul preventivo e sul messaggio.
+
 ![Interfaccia in modalità demo: richiesta, preventivo e verdetti automatici in alto, area di giudizio sotto](docs/schermata.png)
 
 ## Installare, eseguire, testare

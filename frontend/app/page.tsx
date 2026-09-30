@@ -19,7 +19,7 @@ export default async function Pagina() {
         <TutorialPopup demo />
         <p className="banner-demo">
           Modalità demo — richieste inventate, output reali della pipeline.{" "}
-          <a href="https://github.com/Migliaa/revisione-umana-langfuse">Codice su GitHub</a>
+          <a href="https://github.com/Migliaa/revisione-umana-langfuse">Codice su GitHub</a> · <a href="https://cloud.langfuse.com/project/cmu1agdkj00syad0dyas2site/traces/75428e75cb28dd0ff4011fa028ea2e39">Esempio su Langfuse</a>
         </p>
         <ItemDaRivedereView item={datiDemo[0]} catalogo={catalogoDemo} registraGiudizio={registraGiudizioDemo} />
       </main>
