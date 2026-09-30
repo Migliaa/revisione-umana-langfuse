@@ -47,6 +47,7 @@ per popolare Langfuse, quindi non misurano l'accordo di un revisore indipendente
 il giudice segnalava errori di codifica in 7 messaggi su 10, dovuti a una decodifica sbagliata
 dell'output nella pipeline; dopo la correzione sono 0 su 10.
 
-**Codice:**
+**Demo e codice:**
+Demo online: [revisione-umana-langfuse-demo.vercel.app](https://revisione-umana-langfuse-demo.vercel.app) (quattro output reali della pipeline, nessun salvataggio).
 [github.com/Migliaa/revisione-umana-langfuse](https://github.com/Migliaa/revisione-umana-langfuse):
 backend Python (SDK Langfuse 4.15.2, 42 test), interfaccia Next.js 16 e React 19 (22 test), MIT.

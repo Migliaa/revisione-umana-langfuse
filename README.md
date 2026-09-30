@@ -2,11 +2,13 @@
 
 Interfaccia web con cui un revisore senza formazione tecnica giudica gli output di un agente (qui preventivi e messaggi ai clienti) prima che escano dall'azienda, con i giudizi salvati come punteggi su Langfuse accanto a quelli del giudice automatico che ha già valutato gli stessi output, così che un ingegnere AI possa confrontarli.
 
+**Demo online:** https://revisione-umana-langfuse-demo.vercel.app — quattro output reali della pipeline su richieste inventate; i giudizi non vengono salvati da nessuna parte.
+
 ![Interfaccia in modalità demo: richiesta, preventivo e verdetti automatici in alto, area di giudizio sotto](docs/schermata.png)
 
 ## Installare, eseguire, testare
 
-Provare l'interfaccia con dati fittizi, senza Langfuse:
+Provare l'interfaccia in locale con gli stessi dati, senza Langfuse:
 
 ```bash
 cd frontend

@@ -71,7 +71,7 @@ describe("TutorialPopup", () => {
     expect(screen.queryByText(/Come funziona dietro le quinte/)).not.toBeInTheDocument();
   });
 
-  it("in modalità demo mostra anche la nota sui dati fittizzi", () => {
+  it("in modalità demo mostra anche la nota sui dati fittizi", () => {
     render(<TutorialPopup demo />);
     expect(screen.getByText(/dati fittizi/)).toBeInTheDocument();
   });

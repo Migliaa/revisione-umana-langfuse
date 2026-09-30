@@ -17,7 +17,10 @@ export default async function Pagina() {
     return (
       <main>
         <TutorialPopup demo />
-        <p className="banner-demo">Modalità demo — dati fittizi.</p>
+        <p className="banner-demo">
+          Modalità demo — richieste inventate, output reali della pipeline.{" "}
+          <a href="https://github.com/Migliaa/revisione-umana-langfuse">Codice su GitHub</a>
+        </p>
         <ItemDaRivedereView item={datiDemo[0]} catalogo={catalogoDemo} registraGiudizio={registraGiudizioDemo} />
       </main>
     );
