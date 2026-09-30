@@ -13,8 +13,8 @@ comparire nel testo rivolto al pubblico del sito.
 
 Diverso da `tassonomia` e `metodo`: qui il centro del progetto è lo strumento stesso, non
 un'analisi da leggere (deciso in `CONTEXT.md`). Non c'è un formato lungo prosa+figure — solo il
-report breve, 317 parole, con quattro sezioni esplicite (problema, destinatari, funzionalità,
-personalizzazione), senza sezioni da dividere fra home e pubblicazione estesa: è già la lunghezza
+report breve con sei sezioni (problema, destinatari, funzionalità, personalizzazione, prova su
+10 richieste, codice), senza sezioni da dividere fra home e pubblicazione estesa: è già la lunghezza
 di un blocco da home.
 
 ## Provalo tu stesso
@@ -59,3 +59,12 @@ dell'interfaccia in modalità demo (`docs/schermata.png`, 1440 px), in cui compa
 
 La riga va aggiornata a "completato", col nome **"Revisione Umana su Langfuse"** (non più "Ultima
 Parola") — la sessione del sito decide la formulazione esatta.
+
+## Coerenza con il README (2026-09-30)
+
+I numeri della sezione «Prova su 10 richieste» sono gli stessi del `README.md` del repository
+(10 richieste, giudice automatico 8 «sì» e 2 «da rivedere» sul preventivo, 10 «sì» sul messaggio,
+6 richieste giudicate dal revisore con 5 accordi e 1 disaccordo, 42 e 22 test). Se la pagina del
+sito li riporta, devono restare identici e conservare la riserva sull'origine dei giudizi del
+revisore (inseriti dall'autore con Claude), e la pagina deve linkare il repository. Lo screenshot
+è `docs/schermata.png` nel repository.

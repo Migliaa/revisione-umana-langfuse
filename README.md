@@ -1,77 +1,77 @@
 # Revisione Umana su Langfuse
 
-Interfaccia che permette a un revisore non tecnico di dare un verdetto su output generati da un
-agente — qui, preventivi e messaggi cliente — prima che raggiungano il cliente vero, mantenendo il
-collegamento con Langfuse così un ingegnere AI può usare quei verdetti per ricalibrare l'agente e
-il giudice automatico che lo precede.
+Interfaccia web con cui un revisore senza formazione tecnica giudica gli output di un agente (qui preventivi e messaggi ai clienti) prima che escano dall'azienda, con i giudizi salvati come punteggi su Langfuse accanto a quelli del giudice automatico che ha già valutato gli stessi output, così che un ingegnere AI possa confrontarli.
 
 ![Interfaccia in modalità demo: richiesta, preventivo e verdetti automatici in alto, area di giudizio sotto](docs/schermata.png)
 
-## Architettura
+## Installare, eseguire, testare
 
-```
-richiesta cliente → esecutore (agente) → giudice automatico (LLM-as-judge) → coda Langfuse
-                                                                                   │
-                                                                    giudice umano (questa interfaccia)
-                                                                                   │
-                                                                    punteggi tracciati su Langfuse
-```
-
-- **Esecutore**: genera da zero un preventivo (tabella) e un messaggio cliente (email
-  personalizzata) a partire da una richiesta cliente.
-- **Giudice automatico**: valuta preventivo e messaggio separatamente, prima che arrivino
-  all'umano.
-- **Giudice umano** (questa interfaccia): vede richiesta, preventivo, messaggio e i verdetti
-  automatici affiancati. Per ciascuna delle due dimensioni (preventivo, messaggio) registra due
-  giudizi separati: l'esito (`verdetto_preventivo`, `verdetto_messaggio`: sì, no o da rivedere,
-  con commento) e l'accordo con il giudice automatico (`accordo_preventivo`,
-  `accordo_messaggio`: sì o no). Sono quattro punteggi in tutto, così si può distinguere se ha
-  sbagliato l'esecutore o il giudice automatico senza dedurlo da un commento libero.
-- Backend Python (SDK Langfuse) per esecutore, giudice automatico e inserimento in coda.
-  Frontend Next.js/TypeScript, adattato dal template ufficiale
-  [`langfuse-examples/custom-annotation-ui`](https://github.com/langfuse/langfuse-examples/tree/main/applications/custom-annotation-ui),
-  per l'interfaccia del giudice umano.
-
-## Provalo
+Provare l'interfaccia con dati fittizi, senza Langfuse:
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-Senza credenziali Langfuse configurate parte in **modalità demo**: tre item fittizi al posto di
-un errore, con un banner che lo dichiara esplicitamente. Con un progetto Langfuse vero, le
-variabili d'ambiente (`LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`) attivano la
-modalità reale.
+Collegarla a un progetto Langfuse (serve `claude`, la CLI di Claude Code, con login attivo):
 
-## Decisioni degne di nota
+```bash
+cp .env.example .env      # inserire LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+cd backend
+python -m venv .venv && .venv/Scripts/activate      # .venv/bin/activate su macOS e Linux
+pip install -r requirements.txt
+python run_pipeline.py 2026-09-29     # elabora le 10 richieste di backend/data/richieste.json
+cd ../frontend && npm run dev
+```
 
-- **Esito e accordo come punteggi separati, per ciascuna dimensione** — permette di distinguere se
-  sbaglia l'esecutore o il giudice automatico invece di dedurlo da un commento libero.
-- **Layout scelto dopo un prototipo throwaway**, non a tavolino: tre varianti provate con dati
-  finti (stack mobile a card, annotazione inline riga per riga, tre colonne + area di lavoro),
-  scelta la terza perché il giudice umano userebbe lo strumento più volte al giorno da postazione
-  fissa, dove separare "cosa guardo" da "cosa faccio" regge meglio di una sequenza verticale.
-- **White-label esplicito**: lo strumento (bottoni, colori di stato) è neutro; solo il documento
-  preventivo e il messaggio cliente — il contenuto che uscirebbe verso il cliente vero — portano
-  il profilo dell'azienda finta.
-- **Scrittura idempotente dei quattro punteggi** (`Promise.allSettled` + id deterministico
-  `{idTraccia}-{nome}`): una code review con più agenti in parallelo aveva trovato che un retry
-  dopo un fallimento parziale duplicava punteggi già scritti.
-- **Esecutore e giudice automatico girano su Claude Code non interattivo** (uso dell'abbonamento),
-  non su una API a consumo — a costo di dover vincolare bene l'output testuale nel prompt invece
-  di avere un JSON strutturato garantito.
+Test: `cd backend && pytest` (42 test) e `cd frontend && npm test` (22 test) più `npm run typecheck`. Passano da un clone pulito, senza credenziali, perché il client di Claude e quello di Langfuse sono simulati. Non c'è una suite di valutazione dell'accuratezza del giudice automatico: la prova più vicina è quella su 10 richieste descritta sotto.
 
-## Limiti, dichiarati
+## Che cosa fa
 
-Prototipo dimostrativo: poche ripetizioni bastano a verificare che il collegamento con Langfuse
-funzioni end-to-end, non a misurare quanto sia accurato il giudice automatico o l'effetto della
-ricalibrazione — servirebbe scala e una misura statistica, assenti qui. Nessun login, nessun invio
-email reale, nessun deploy pubblico: scelte esplicite per restare un prototipo, non lacune
-scoperte in corsa. Catalogo e profilo aziendale sono dati caricati da una fonte separata e
-sostituibile, così un'azienda reale potrebbe collegare i propri senza toccare la pipeline.
+Il problema è che chi controlla in azienda l'output di un'automazione spesso non l'ha costruita e non conosce tracce, punteggi e configurazioni, mentre chi la mantiene (l'ingegnere AI) ha bisogno proprio dei giudizi di quella persona per capire dove l'agente sbaglia. L'interfaccia è pensata per un addetto commerciale o amministrativo.
+
+- **Entrano**: una richiesta cliente in testo libero, un catalogo di voci e prezzi (`backend/data/catalogo.json`) e il profilo dell'azienda per l'intestazione del PDF, tutti in file JSON sostituibili senza toccare il codice.
+- **Escono**: per ogni richiesta un preventivo (voci, quantità, prezzi, totale), un messaggio al cliente, un PDF del preventivo, due verdetti automatici (uno sul preventivo, uno sul messaggio) e, dopo la revisione, quattro punteggi umani su Langfuse. Se il revisore modifica il messaggio, il testo corretto è salvato nei metadati del punteggio `verdetto_messaggio`.
+
+```
+richiesta → esecutore → giudice automatico → coda Langfuse → revisore (questa interfaccia) → punteggi su Langfuse
+```
+
+Il revisore dà, per il preventivo e per il messaggio, un esito (`verdetto_preventivo`, `verdetto_messaggio`: sì, no o da rivedere, con commento) e l'accordo con il giudice automatico (`accordo_preventivo`, `accordo_messaggio`: sì o no). Con quattro punteggi separati si distingue se ha sbagliato l'esecutore o il giudice automatico senza dedurlo da un commento libero.
+
+Stack: esecutore e giudice automatico usano Claude Sonnet tramite `claude -p --model sonnet` (abbonamento, non chiave API; l'alias non fissa la versione e le tracce non la registrano); Langfuse Cloud con l'SDK Python 4.15.2; PDF con reportlab 5.0.1; interfaccia in Next.js 16 e React 19 adattata dal template [`custom-annotation-ui`](https://github.com/langfuse/langfuse-examples/tree/main/applications/custom-annotation-ui); test con pytest e Vitest.
+
+## Che cosa ha mostrato la prova
+
+Un solo lancio (lotto `2026-09-29`) su 10 richieste scritte a mano (tinteggiatura, sostituzione di finestre, pulizia di fine cantiere), alcune con un caso limite: un servizio non a catalogo, un servizio da escludere su richiesta del cliente, pareti già in buono stato.
+
+- Il giudice automatico ha dato "sì" al preventivo in 8 richieste su 10 e "da rivedere" in 2 (una camera di 16 mq con una pulizia di cantiere da 144 € non richiesta; un appartamento di 80 mq dove la quantità di pittura coincide con la superficie del pavimento, non con pareti e soffitto). Al messaggio ha dato "sì" in 10 su 10.
+- Sono state giudicate da un revisore 6 richieste, tutte tra quelle a cui il giudice aveva dato "sì" su entrambe le dimensioni; le due segnalate dal giudice sono ancora in coda. Il revisore concorda con il giudice in 5 richieste su 6 e dissente in una (cucina con impianto elettrico non a catalogo: preventivo con stuccatura e pulizia non richieste, messaggio senza totale, poi corretto). Questi giudizi li ha inseriti l'autore con l'aiuto di Claude per popolare Langfuse, quindi non misurano l'accordo di un revisore indipendente, e 6 casi non bastano per una percentuale.
+- Nel primo lancio il giudice segnalava errori di codifica ("â‚¬" al posto di "€") in 7 messaggi su 10. Il difetto era nella pipeline: `subprocess.run(text=True)` su Windows decodificava in cp1252 l'output UTF-8 di Claude, e il giudice valutava correttamente un testo rovinato. Con `encoding="utf-8"` le segnalazioni sono 0 su 10. I test non lo vedevano perché simulano il client di Claude.
+
+## Dove sono i file
+
+| Cosa | Dove |
+|---|---|
+| Esecutore, giudice automatico, prompt | `backend/giudice_pipeline/esecutore.py`, `giudice_automatico.py` |
+| Chiamata a Claude Code, scrittura su Langfuse, PDF | `claude_cli.py`, `langfuse_gateway.py`, `documento.py` |
+| Lettura della coda e scrittura dei punteggi umani | `frontend/lib/langfuse.ts`, `frontend/lib/azioni.ts` |
+| Schermata di revisione | `frontend/components/ItemDaRivedereView.tsx` |
+| Modalità demo | `frontend/lib/demo.ts`, `frontend/app/page.tsx` |
+| Glossario e decisioni | `CONTEXT.md`; registro cronologico in `DIARIO.md` |
+
+## Decisioni
+
+- **Layout scelto dopo un prototipo usa e getta**: tre varianti con dati finti (schede sovrapposte per telefono, annotazione riga per riga, tre colonne di sola lettura con area di lavoro sotto). Vince la terza perché il revisore userebbe lo strumento più volte al giorno da postazione fissa, e separare "cosa guardo" da "cosa faccio" regge meglio con quattro campi di giudizio e un testo modificabile.
+- **Interfaccia neutra, personalizzazione solo sul contenuto in uscita**: colori e pulsanti sono uguali per ogni azienda, mentre il PDF e il messaggio portano nome e dati dell'azienda (qui un'azienda finta, ACME).
+- **Scrittura dei punteggi idempotente**: `Promise.allSettled` con id `{idTraccia}-{nome}`, perché un retry dopo un fallimento parziale duplicava i punteggi già scritti (trovato in una revisione del codice con 8 agenti in parallelo).
+- **Claude Code non interattivo invece di una API a consumo**, a costo di dover vincolare l'output nel prompt invece di ricevere JSON garantito; con `--safe-mode`, perché senza il modello scopriva il `CLAUDE.md` del repository e usciva dal ruolo.
+
+## Limiti
+
+La ricalibrazione del giudice automatico non è implementata: il progetto raccoglie i giudizi umani sulla stessa traccia, che è il dato di cui ogni metodo ha bisogno, ma non ne applica nessuno, perché non esiste un metodo riconosciuto da tutti (modifica manuale del prompt, fine-tuning, calibrazione statistica). Non ci sono login, invio reale delle email né una versione pubblicata. Rilanciare `run_pipeline.py` senza indicare un lotto riusa gli id delle tracce e aggiunge osservazioni e punteggi doppi. Il catalogo di prova ha 8 voci, e l'esecutore compone i preventivi solo con quelle.
 
 ## Licenza
 
-MIT — vedi [`LICENSE`](LICENSE).
+MIT, vedi [`LICENSE`](LICENSE).

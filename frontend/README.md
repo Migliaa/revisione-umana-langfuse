@@ -1,4 +1,4 @@
-# Interfaccia giudice (lettura)
+# Interfaccia di revisione (Next.js)
 
 Vedi `../CONTEXT.md` per il glossario di dominio e le decisioni prese. Adattata dal template
 `langfuse-examples/custom-annotation-ui` (Next.js/TS).
@@ -11,8 +11,8 @@ npm install
 
 Le credenziali sono in `../.env` (stesso file usato dal backend Python, non duplicato qui):
 `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`. Se mancano, l'interfaccia parte
-comunque in **modalità demo**: dati fittizzi (`lib/demo.ts`), nessuna connessione reale a
-Langfuse — utile per provare l'interfaccia senza un progetto Langfuse configurato.
+comunque in **modalità demo**: dati fittizi (`lib/demo.ts`), utili per provare l'interfaccia senza un
+progetto Langfuse configurato.
 
 ## Sviluppo
 

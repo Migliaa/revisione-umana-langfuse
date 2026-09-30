@@ -37,3 +37,16 @@ Catalogo prezzi e profilo aziendale del documento (il logo e i dati che compaion
 sono dati separati dalla logica di revisione: sostituirli con quelli di un'azienda reale non
 richiede modifiche all'interfaccia. La stessa interfaccia si applica a qualunque processo di
 controllo su output testuali strutturati, non solo preventivi.
+
+**Prova su 10 richieste:**
+Un lancio su 10 richieste scritte a mano, con Claude Sonnet come esecutore e come giudice
+automatico. Il giudice ha dato «sì» al preventivo in 8 richieste e «da rivedere» in 2, e «sì» al
+messaggio in 10. Il revisore ha giudicato 6 richieste, tutte tra quelle approvate dal giudice,
+concordando in 5 e dissentendo in una; quei giudizi li ha inseriti l'autore con l'aiuto di Claude
+per popolare Langfuse, quindi non misurano l'accordo di un revisore indipendente. Nel primo lancio
+il giudice segnalava errori di codifica in 7 messaggi su 10, dovuti a una decodifica sbagliata
+dell'output nella pipeline; dopo la correzione sono 0 su 10.
+
+**Codice:**
+[github.com/Migliaa/revisione-umana-langfuse](https://github.com/Migliaa/revisione-umana-langfuse):
+backend Python (SDK Langfuse 4.15.2, 42 test), interfaccia Next.js 16 e React 19 (22 test), MIT.
