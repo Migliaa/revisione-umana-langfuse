@@ -59,7 +59,7 @@ Un solo lancio (lotto `2026-09-29`) su 10 richieste scritte a mano (tinteggiatur
 | Lettura della coda e scrittura dei punteggi umani | `frontend/lib/langfuse.ts`, `frontend/lib/azioni.ts` |
 | Schermata di revisione | `frontend/components/ItemDaRivedereView.tsx` |
 | Modalità demo | `frontend/lib/demo.ts`, `frontend/app/page.tsx` |
-| Glossario e decisioni | `CONTEXT.md`; registro cronologico in `DIARIO.md` |
+| Glossario e decisioni | `CONTEXT.md` |
 
 ## Decisioni
 

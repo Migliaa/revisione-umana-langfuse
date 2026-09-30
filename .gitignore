@@ -8,3 +8,10 @@ __pycache__/
 .next/
 .claude/scheduled_tasks.lock
 *.tsbuildinfo
+
+# materiale interno, solo su questo computer
+BRIEF.md
+CLAUDE.md
+DIARIO.md
+report/CONSEGNA.md
+.claude/
