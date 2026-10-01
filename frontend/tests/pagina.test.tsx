@@ -3,18 +3,17 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { ItemDaRivedereView } from "../components/ItemDaRivedereView";
 import { caricaCatalogo } from "../lib/catalogo";
-import { caricaProssimoItemDaRivedere } from "../lib/langfuse";
-import { HOST, mockaFetchLangfuse } from "./mock-langfuse";
+import { azzeraMemoriaCoda, caricaItemDaRivedere, risolviUrlDocumento } from "../lib/langfuse";
+import { HOST, mockaFetchLangfuse, rispostePerOsservazioni } from "./mock-langfuse";
 
 const RISPOSTE: Record<string, unknown> = {
   "/api/public/annotation-queues?limit=100": {
     data: [{ id: "queue-1", name: "revisione-preventivi" }],
   },
-  "/api/public/annotation-queues/queue-1/items?status=PENDING&limit=1&page=1": {
+  "/api/public/annotation-queues/queue-1/items?status=PENDING&limit=50&page=1": {
     data: [{ id: "item-1", objectId: "trace-1" }],
   },
-  "/api/public/traces/trace-1": {
-    observations: [
+  ...rispostePerOsservazioni({ "trace-1": [
       { name: "pipeline-preventivo", input: { richiesta: "Vorrei tinteggiare 80 mq" }, output: {} },
       {
         name: "esecutore",
@@ -37,24 +36,31 @@ const RISPOSTE: Record<string, unknown> = {
         input: {},
         output: { documento: "@@@langfuseMedia:type=application/pdf|id=media-1|source=bytes@@@" },
       },
-    ],
-  },
+    ] }),
   "/api/public/media/media-1": { url: "https://storage.example/documento.pdf" },
 };
 
 describe("lettura dell'item di coda", () => {
   beforeEach(() => {
+    azzeraMemoriaCoda();
     process.env.LANGFUSE_HOST = HOST;
     process.env.LANGFUSE_PUBLIC_KEY = "pk-test";
     process.env.LANGFUSE_SECRET_KEY = "sk-test";
     mockaFetchLangfuse(RISPOSTE);
   });
 
-  it("mostra richiesta, preventivo, i due verdetti separati e il documento, con i dati dell'item mockato", async () => {
-    const item = await caricaProssimoItemDaRivedere();
-    expect(item).not.toBeNull();
+  it("mostra richiesta, preventivo, i due verdetti separati e il documento (risolto all'apertura della scheda), con i dati dell'item mockato", async () => {
+    const items = await caricaItemDaRivedere();
+    expect(items).toHaveLength(1);
 
-    render(<ItemDaRivedereView item={item!} catalogo={caricaCatalogo()} registraGiudizio={async () => null} />);
+    render(
+      <ItemDaRivedereView
+        items={items}
+        catalogo={caricaCatalogo()}
+        registraGiudizio={async () => {}}
+        risolviUrlDocumento={risolviUrlDocumento}
+      />
+    );
 
     expect(screen.getByText("Vorrei tinteggiare 80 mq")).toBeInTheDocument();
     expect(screen.getByText(/Pittura lavabile bianca/)).toBeInTheDocument();
@@ -64,15 +70,15 @@ describe("lettura dell'item di coda", () => {
     expect(screen.getByDisplayValue("Buongiorno, in allegato il preventivo.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Documento" }));
-    expect(screen.getByTitle("Anteprima documento preventivo")).toHaveAttribute(
+    expect(await screen.findByTitle("Anteprima documento preventivo")).toHaveAttribute(
       "src",
       "https://storage.example/documento.pdf"
     );
   });
 
   it("il catalogo di riferimento resta nascosto finché non viene richiamato esplicitamente", async () => {
-    const item = await caricaProssimoItemDaRivedere();
-    render(<ItemDaRivedereView item={item!} catalogo={caricaCatalogo()} registraGiudizio={async () => null} />);
+    const items = await caricaItemDaRivedere();
+    render(<ItemDaRivedereView items={items} catalogo={caricaCatalogo()} registraGiudizio={async () => {}} />);
 
     expect(screen.queryByText(/€ \/ mq/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Vedi catalogo di riferimento"));
@@ -80,8 +86,8 @@ describe("lettura dell'item di coda", () => {
   });
 
   it("non mostra terminologia tecnica Langfuse", async () => {
-    const item = await caricaProssimoItemDaRivedere();
-    render(<ItemDaRivedereView item={item!} catalogo={caricaCatalogo()} registraGiudizio={async () => null} />);
+    const items = await caricaItemDaRivedere();
+    render(<ItemDaRivedereView items={items} catalogo={caricaCatalogo()} registraGiudizio={async () => {}} />);
 
     const testoPagina = (document.body.textContent ?? "").toLowerCase();
     for (const termine of ["trace", "observation", "score config", "queue"]) {

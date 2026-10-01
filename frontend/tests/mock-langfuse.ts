@@ -24,3 +24,22 @@ export function mockaFetchLangfuse(risposte: Record<string, unknown>) {
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
+
+/** Risposte della lista di osservazioni (una chiamata per nome, per tutte le tracce) a partire dalle
+ * osservazioni di ciascuna traccia. */
+export function rispostePerOsservazioni(
+  tracce: Record<string, { name: string; input: unknown; output: unknown }[]>
+): Record<string, unknown> {
+  const nomi = ["pipeline-preventivo", "esecutore", "giudice-automatico", "documento-preventivo"];
+  return Object.fromEntries(
+    nomi.map((nome) => [
+      `/api/public/observations?name=${nome}&limit=100&page=1`,
+      {
+        data: Object.entries(tracce).flatMap(([traceId, osservazioni]) =>
+          osservazioni.filter((o) => o.name === nome).map((o) => ({ ...o, traceId }))
+        ),
+        meta: { totalPages: 1 },
+      },
+    ])
+  );
+}

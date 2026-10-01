@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ItemDaRivedereView } from "../components/ItemDaRivedereView";
@@ -15,99 +15,104 @@ const ITEM: ItemDaRivedere = {
   verdettoMessaggio: { esito: "da_rivedere", testo: "Tono troppo informale." },
 };
 
-const ITEM_SUCCESSIVO: ItemDaRivedere = {
+const ITEM_2: ItemDaRivedere = {
   ...ITEM,
   idTraccia: "trace-2",
   idItemCoda: "item-2",
   richiestaCliente: "Vorrei imbiancare una stanza",
+  messaggioCliente: "Secondo messaggio.",
 };
 
-function completaTuttiIGiudizi() {
-  const gruppoPreventivo = screen.getByRole("group", { name: "Giudizio preventivo" });
-  fireEvent.click(within(gruppoPreventivo).getByRole("button", { name: "Sì" }));
+const ITEM_3: ItemDaRivedere = {
+  ...ITEM,
+  idTraccia: "trace-3",
+  idItemCoda: "item-3",
+  richiestaCliente: "Vorrei sostituire sei finestre",
+  messaggioCliente: "Terzo messaggio.",
+};
 
-  const gruppoAccordoPreventivo = screen.getByRole("group", {
-    name: "D'accordo col giudice automatico sul preventivo?",
-  });
-  fireEvent.click(within(gruppoAccordoPreventivo).getByRole("button", { name: "Sì" }));
+const COMMENTO = "Commento (obbligatorio se la risposta è 'No')";
 
-  const gruppoMessaggio = screen.getByRole("group", { name: "Giudizio messaggio" });
-  fireEvent.click(within(gruppoMessaggio).getByRole("button", { name: "Sì" }));
-
-  const gruppoAccordoMessaggio = screen.getByRole("group", {
-    name: "D'accordo col giudice automatico sul messaggio?",
-  });
-  fireEvent.click(within(gruppoAccordoMessaggio).getByRole("button", { name: "Sì" }));
+function scegli(gruppo: string, risposta: "Sì" | "No") {
+  const g = screen.getByRole("group", { name: gruppo });
+  fireEvent.click(within(g).getByRole("button", { name: risposta }));
 }
 
-describe("area di lavoro del giudice umano", () => {
+function completaTuttiIGiudizi(esitoPreventivo: "Sì" | "No" = "Sì") {
+  scegli("Giudizio preventivo", esitoPreventivo);
+  scegli("D'accordo col giudice automatico sul preventivo?", "Sì");
+  scegli("Giudizio messaggio", "Sì");
+  scegli("D'accordo col giudice automatico sul messaggio?", "Sì");
+  if (esitoPreventivo === "No") {
+    const [commentoPreventivo] = screen.getAllByPlaceholderText(COMMENTO);
+    fireEvent.change(commentoPreventivo, { target: { value: "Manca una voce" } });
+  }
+}
+
+const registra = () => screen.getByRole("button", { name: "Registra giudizio" });
+const posticipa = () => screen.getByRole("button", { name: "Posticipa" });
+const inviaMail = () => screen.getByRole("button", { name: "Invia mail" });
+
+function renderiza(items: ItemDaRivedere[], registraGiudizio = vi.fn().mockResolvedValue(undefined)) {
+  render(<ItemDaRivedereView items={items} catalogo={[]} registraGiudizio={registraGiudizio} />);
+  return registraGiudizio;
+}
+
+describe("area di lavoro del revisore", () => {
   it("il messaggio cliente è modificabile", () => {
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={async () => null} />);
+    renderiza([ITEM]);
 
     const campo = screen.getByDisplayValue("Buongiorno, in allegato il preventivo.");
-    fireEvent.change(campo, { target: { value: "Testo corretto dal giudice." } });
+    fireEvent.change(campo, { target: { value: "Testo corretto dal revisore." } });
 
-    expect(screen.getByDisplayValue("Testo corretto dal giudice.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Testo corretto dal revisore.")).toBeInTheDocument();
   });
 
-  it("il pulsante di registrazione resta disabilitato finché i quattro giudizi non sono completi", () => {
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={async () => null} />);
+  it("il revisore risponde solo Sì o No: non esiste un'opzione 'Da rivedere' tra le sue scelte", () => {
+    renderiza([ITEM]);
 
-    const pulsanteSubmit = screen.getByRole("button", { name: "Registra giudizio e passa al prossimo" });
-    expect(pulsanteSubmit).toBeDisabled();
-
-    const gruppoPreventivo = screen.getByRole("group", { name: "Giudizio preventivo" });
-    fireEvent.click(within(gruppoPreventivo).getByRole("button", { name: "Sì" }));
-    expect(pulsanteSubmit).toBeDisabled();
-
-    completaTuttiIGiudizi();
-    expect(pulsanteSubmit).toBeEnabled();
+    for (const gruppo of ["Giudizio preventivo", "Giudizio messaggio"]) {
+      const bottoni = within(screen.getByRole("group", { name: gruppo })).getAllByRole("button");
+      expect(bottoni.map((b) => b.textContent)).toEqual(["Sì", "No"]);
+    }
   });
 
-  it("il commento è obbligatorio quando l'esito non è 'sì'", () => {
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={async () => null} />);
+  it("'Registra giudizio' resta disabilitato finché i quattro giudizi non sono completi", () => {
+    renderiza([ITEM]);
+    expect(registra()).toBeDisabled();
+
+    scegli("Giudizio preventivo", "Sì");
+    expect(registra()).toBeDisabled();
 
     completaTuttiIGiudizi();
-    const pulsanteSubmit = screen.getByRole("button", { name: "Registra giudizio e passa al prossimo" });
-    expect(pulsanteSubmit).toBeEnabled();
+    expect(registra()).toBeEnabled();
+  });
 
-    const gruppoPreventivo = screen.getByRole("group", { name: "Giudizio preventivo" });
-    fireEvent.click(within(gruppoPreventivo).getByRole("button", { name: "No" }));
-    expect(pulsanteSubmit).toBeDisabled();
+  it("il commento è obbligatorio quando la risposta è 'No'", () => {
+    renderiza([ITEM]);
 
-    const [commentoPreventivo] = screen.getAllByPlaceholderText("Commento (obbligatorio se non è 'Sì')");
+    completaTuttiIGiudizi();
+    expect(registra()).toBeEnabled();
+
+    scegli("Giudizio preventivo", "No");
+    expect(registra()).toBeDisabled();
+
+    const [commentoPreventivo] = screen.getAllByPlaceholderText(COMMENTO);
     fireEvent.change(commentoPreventivo, { target: { value: "Manca una voce di catalogo" } });
-    expect(pulsanteSubmit).toBeEnabled();
+    expect(registra()).toBeEnabled();
   });
 
-  it("'Invia mail' mostra una conferma a schermo senza effettuare chiamate di rete", () => {
-    const fetchSpy = vi.spyOn(global, "fetch");
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={async () => null} />);
+  it("registrare chiama registraGiudizio coi valori scelti", async () => {
+    const registraGiudizio = renderiza([ITEM]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Invia mail" }));
+    completaTuttiIGiudizi("No");
+    fireEvent.click(registra());
 
-    expect(screen.getByText(/mail inviata/i)).toBeInTheDocument();
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("registrare il giudizio chiama registraGiudizio coi valori scelti e passa all'item successivo", async () => {
-    const registraGiudizio = vi.fn().mockResolvedValue(ITEM_SUCCESSIVO);
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={registraGiudizio} />);
-
-    completaTuttiIGiudizi();
-
-    const gruppoPreventivo = screen.getByRole("group", { name: "Giudizio preventivo" });
-    fireEvent.click(within(gruppoPreventivo).getByRole("button", { name: "Da rivedere" }));
-    const [commentoPreventivo] = screen.getAllByPlaceholderText("Commento (obbligatorio se non è 'Sì')");
-    fireEvent.change(commentoPreventivo, { target: { value: "Manca una voce" } });
-
-    fireEvent.click(screen.getByRole("button", { name: "Registra giudizio e passa al prossimo" }));
-
-    expect(await screen.findByText("Vorrei imbiancare una stanza")).toBeInTheDocument();
+    await waitFor(() => expect(inviaMail()).toBeDisabled());
     expect(registraGiudizio).toHaveBeenCalledWith({
       idTraccia: "trace-1",
       idItemCoda: "item-1",
-      esitoPreventivo: "da_rivedere",
+      esitoPreventivo: "no",
       commentoPreventivo: "Manca una voce",
       accordoPreventivo: true,
       esitoMessaggio: "si",
@@ -117,23 +122,179 @@ describe("area di lavoro del giudice umano", () => {
     });
   });
 
-  it("se la registrazione fallisce, mostra il messaggio d'errore specifico invece di uno generico", async () => {
+  it("se la registrazione fallisce, mostra il messaggio d'errore specifico e lascia modificabile il giudizio", async () => {
     const registraGiudizio = vi.fn().mockRejectedValue(new Error("Score config 'accordo_messaggio' non trovata"));
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={registraGiudizio} />);
+    renderiza([ITEM], registraGiudizio);
 
     completaTuttiIGiudizi();
-    fireEvent.click(screen.getByRole("button", { name: "Registra giudizio e passa al prossimo" }));
+    fireEvent.click(registra());
 
     expect(await screen.findByText("Score config 'accordo_messaggio' non trovata")).toBeInTheDocument();
+    expect(inviaMail()).toBeDisabled();
+    expect(registra()).toBeEnabled();
   });
 
-  it("se non ci sono altri item in coda, mostra lo stato vuoto dopo la registrazione", async () => {
-    const registraGiudizio = vi.fn().mockResolvedValue(null);
-    render(<ItemDaRivedereView item={ITEM} catalogo={[]} registraGiudizio={registraGiudizio} />);
+  it("senza item mostra lo stato vuoto", () => {
+    renderiza([]);
+    expect(screen.getByText("Nessun preventivo da rivedere al momento.")).toBeInTheDocument();
+  });
+});
+
+describe("invio della mail", () => {
+  it("'Invia mail' è disabilitato finché il giudizio non è registrato", () => {
+    renderiza([ITEM]);
+    expect(inviaMail()).toBeDisabled();
 
     completaTuttiIGiudizi();
-    fireEvent.click(screen.getByRole("button", { name: "Registra giudizio e passa al prossimo" }));
+    expect(inviaMail()).toBeDisabled();
+  });
 
-    expect(await screen.findByText("Nessun preventivo da rivedere al momento.")).toBeInTheDocument();
+  it("dopo la registrazione 'Invia mail' si abilita e mostra una conferma senza chiamate di rete", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    renderiza([ITEM]);
+
+    completaTuttiIGiudizi();
+    fireEvent.click(registra());
+    await waitFor(() => expect(inviaMail()).toBeEnabled());
+
+    fireEvent.click(inviaMail());
+
+    expect(screen.getByText("Mail inviata (simulata).")).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("con 'No' sul preventivo la mail non si può inviare", async () => {
+    renderiza([ITEM]);
+
+    completaTuttiIGiudizi("No");
+    fireEvent.click(registra());
+
+    expect(await screen.findByText(/la mail non si invia/i)).toBeInTheDocument();
+    expect(inviaMail()).toBeDisabled();
+  });
+
+  it("con 'No' sul solo messaggio la mail si può inviare", async () => {
+    renderiza([ITEM]);
+
+    scegli("Giudizio preventivo", "Sì");
+    scegli("D'accordo col giudice automatico sul preventivo?", "Sì");
+    scegli("Giudizio messaggio", "No");
+    scegli("D'accordo col giudice automatico sul messaggio?", "No");
+    const commenti = screen.getAllByPlaceholderText(COMMENTO);
+    fireEvent.change(commenti[1], { target: { value: "Tono troppo informale" } });
+    fireEvent.click(registra());
+
+    await waitFor(() => expect(inviaMail()).toBeEnabled());
+  });
+
+  it("dopo la registrazione il giudizio non è più modificabile", async () => {
+    renderiza([ITEM]);
+
+    completaTuttiIGiudizi();
+    fireEvent.click(registra());
+    await waitFor(() => expect(inviaMail()).toBeEnabled());
+
+    const g = screen.getByRole("group", { name: "Giudizio preventivo" });
+    expect(within(g).getByRole("button", { name: "No" })).toBeDisabled();
+    expect(screen.getByDisplayValue("Buongiorno, in allegato il preventivo.")).toBeDisabled();
+  });
+});
+
+describe("più preventivi da giudicare", () => {
+  it("l'elenco mostra tutti gli item con il loro stato", () => {
+    renderiza([ITEM, ITEM_2]);
+
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+    expect(within(elenco).getByText(/Vorrei tinteggiare 80 mq/)).toBeInTheDocument();
+    expect(within(elenco).getByText(/Vorrei imbiancare una stanza/)).toBeInTheDocument();
+    expect(within(elenco).getAllByText("Da giudicare")).toHaveLength(2);
+  });
+
+  it("cliccando una voce dell'elenco si passa a quell'item", () => {
+    renderiza([ITEM, ITEM_2]);
+
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+    fireEvent.click(within(elenco).getByText(/Vorrei imbiancare una stanza/));
+
+    expect(screen.getByDisplayValue("Secondo messaggio.")).toBeInTheDocument();
+  });
+
+  it("le scelte di un item restano quando si va su un altro e si torna indietro", () => {
+    renderiza([ITEM, ITEM_2]);
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+
+    scegli("Giudizio preventivo", "Sì");
+    fireEvent.click(within(elenco).getByText(/Vorrei imbiancare una stanza/));
+    fireEvent.click(within(elenco).getByText(/Vorrei tinteggiare 80 mq/));
+
+    const g = screen.getByRole("group", { name: "Giudizio preventivo" });
+    expect(within(g).getByRole("button", { name: "Sì" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("'Posticipa' salta al prossimo item senza scrivere nulla e manda questo in fondo all'elenco", () => {
+    const registraGiudizio = renderiza([ITEM, ITEM_2, ITEM_3]);
+
+    fireEvent.click(posticipa());
+
+    expect(screen.getByDisplayValue("Secondo messaggio.")).toBeInTheDocument();
+    expect(registraGiudizio).not.toHaveBeenCalled();
+    const voci = within(screen.getByRole("navigation", { name: "Preventivi del lotto" })).getAllByRole("button");
+    expect(voci.map((v) => v.textContent)).toEqual([
+      expect.stringContaining("1. Vorrei imbiancare una stanza"),
+      expect.stringContaining("2. Vorrei sostituire sei finestre"),
+      expect.stringContaining("3. Vorrei tinteggiare 80 mq"),
+    ]);
+  });
+
+  it("'Posticipa' è disabilitato se non c'è un altro item da gestire", () => {
+    renderiza([ITEM]);
+    expect(posticipa()).toBeDisabled();
+  });
+
+  it("'Posticipa' non compare come esito del giudizio: sta nella barra delle azioni", () => {
+    renderiza([ITEM, ITEM_2]);
+
+    const barra = screen.getByRole("button", { name: "Registra giudizio" }).parentElement!;
+    expect(within(barra).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Posticipa",
+      "Registra giudizio",
+      "Invia mail",
+    ]);
+  });
+
+  it("dopo l'invio della mail si passa all'item successivo e l'elenco segna il precedente come inviato", async () => {
+    renderiza([ITEM, ITEM_2]);
+
+    completaTuttiIGiudizi();
+    fireEvent.click(registra());
+    await waitFor(() => expect(inviaMail()).toBeEnabled());
+    fireEvent.click(inviaMail());
+
+    expect(screen.getByDisplayValue("Secondo messaggio.")).toBeInTheDocument();
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+    expect(within(elenco).getByText("Mail inviata")).toBeInTheDocument();
+  });
+
+  it("registrare un item con 'No' sul preventivo passa direttamente al successivo", async () => {
+    renderiza([ITEM, ITEM_2]);
+
+    completaTuttiIGiudizi("No");
+    fireEvent.click(registra());
+
+    expect(await screen.findByDisplayValue("Secondo messaggio.")).toBeInTheDocument();
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+    expect(within(elenco).getByText("Giudicato · nessuna mail")).toBeInTheDocument();
+  });
+
+  it("quando tutti gli item sono gestiti lo dice", async () => {
+    renderiza([ITEM]);
+
+    completaTuttiIGiudizi();
+    fireEvent.click(registra());
+    await waitFor(() => expect(inviaMail()).toBeEnabled());
+    expect(screen.queryByText("Tutti i preventivi sono stati gestiti.")).not.toBeInTheDocument();
+
+    fireEvent.click(inviaMail());
+    expect(screen.getByText("Tutti i preventivi sono stati gestiti.")).toBeInTheDocument();
   });
 });

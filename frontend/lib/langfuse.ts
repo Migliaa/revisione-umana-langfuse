@@ -15,6 +15,8 @@ function configurazione() {
   return { host, publicKey, secretKey };
 }
 
+const TENTATIVI_SU_429 = 5;
+
 async function chiamaApiLangfuse<T>(
   percorso: string,
   opzioni: { metodo?: string; corpo?: unknown } = {}
@@ -22,19 +24,27 @@ async function chiamaApiLangfuse<T>(
   const { host, publicKey, secretKey } = configurazione();
   const autenticazione = Buffer.from(`${publicKey}:${secretKey}`).toString("base64");
 
-  const risposta = await fetch(`${host}${percorso}`, {
-    method: opzioni.metodo ?? "GET",
-    headers: {
-      Authorization: `Basic ${autenticazione}`,
-      ...(opzioni.corpo !== undefined ? { "Content-Type": "application/json" } : {}),
-    },
-    body: opzioni.corpo !== undefined ? JSON.stringify(opzioni.corpo) : undefined,
-    cache: "no-store",
-  });
-  if (!risposta.ok) {
-    throw new Error(`Chiamata a ${percorso} fallita con stato ${risposta.status}`);
+  // Il piano gratuito limita le richieste al minuto: sui 429 si riprova aspettando quanto indicato.
+  for (let tentativo = 0; ; tentativo++) {
+    const risposta = await fetch(`${host}${percorso}`, {
+      method: opzioni.metodo ?? "GET",
+      headers: {
+        Authorization: `Basic ${autenticazione}`,
+        ...(opzioni.corpo !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: opzioni.corpo !== undefined ? JSON.stringify(opzioni.corpo) : undefined,
+      cache: "no-store",
+    });
+    if (risposta.status === 429 && tentativo < TENTATIVI_SU_429) {
+      const attesa = Number(risposta.headers?.get("retry-after")) || 2 ** tentativo;
+      await new Promise((risolvi) => setTimeout(risolvi, Math.min(attesa, 65) * 1000));
+      continue;
+    }
+    if (!risposta.ok) {
+      throw new Error(`Chiamata a ${percorso} fallita con stato ${risposta.status}`);
+    }
+    return (await risposta.json()) as T;
   }
-  return (await risposta.json()) as T;
 }
 
 /** La coda deve esistere già (creata da `run_pipeline.py` lato backend) — se manca è un problema
@@ -53,26 +63,56 @@ async function trovaIdCoda(): Promise<string> {
   return idCoda;
 }
 
-async function trovaProssimoItemCoda(
-  idCoda: string
-): Promise<{ idTraccia: string; idItemCoda: string } | null> {
-  const risposta = await chiamaApiLangfuse<{ data: { id: string; objectId: string }[] }>(
-    `/api/public/annotation-queues/${idCoda}/items?status=PENDING&limit=1&page=1`
-  );
-  const item = risposta.data[0];
-  return item ? { idTraccia: item.objectId, idItemCoda: item.id } : null;
+const ITEM_PER_PAGINA = 50;
+
+/** Tutta la coda ancora da giudicare, non un item per volta: l'interfaccia fa scegliere
+ * al revisore l'ordine e gli permette di posticipare un preventivo senza scrivere nulla su Langfuse. */
+async function trovaItemCodaInAttesa(idCoda: string): Promise<{ idTraccia: string; idItemCoda: string }[]> {
+  const trovati: { idTraccia: string; idItemCoda: string }[] = [];
+  for (let pagina = 1; ; pagina++) {
+    const risposta = await chiamaApiLangfuse<{ data: { id: string; objectId: string }[] }>(
+      `/api/public/annotation-queues/${idCoda}/items?status=PENDING&limit=${ITEM_PER_PAGINA}&page=${pagina}`
+    );
+    for (const item of risposta.data) trovati.push({ idTraccia: item.objectId, idItemCoda: item.id });
+    if (risposta.data.length < ITEM_PER_PAGINA) return trovati;
+  }
 }
 
-async function caricaItemDaCoda(idCoda: string): Promise<ItemDaRivedere | null> {
-  const prossimo = await trovaProssimoItemCoda(idCoda);
-  if (!prossimo) return null;
-  const { idTraccia, idItemCoda } = prossimo;
+type Osservazione = { name: string; traceId: string; startTime?: string; input: unknown; output: unknown };
+type OsservazioniPerTraccia = Map<string, Osservazione>;
 
-  const osservazioni = await caricaOsservazioni(idTraccia);
-  const pipeline = osservazioni.find((o) => o.name === "pipeline-preventivo");
-  const esecutore = osservazioni.find((o) => o.name === "esecutore");
-  const giudiceAutomatico = osservazioni.find((o) => o.name === "giudice-automatico");
-  const documento = osservazioni.find((o) => o.name === "documento-preventivo");
+const NOMI_OSSERVAZIONI = ["pipeline-preventivo", "esecutore", "giudice-automatico", "documento-preventivo"] as const;
+
+/** Le osservazioni di un nome, per tutte le tracce, in una chiamata sola invece di una per traccia:
+ * il piano gratuito di Langfuse concede 5 letture al minuto, quindi leggere la traccia di ogni item
+ * non regge una coda di qualche item. Se una traccia ha lo stesso nome più volte (lotti rilanciati)
+ * vale la più recente. */
+async function caricaOsservazioniPerNome(nome: string, tracce: Set<string>): Promise<OsservazioniPerTraccia> {
+  const trovate: OsservazioniPerTraccia = new Map();
+  for (let pagina = 1; ; pagina++) {
+    const risposta = await chiamaApiLangfuse<{ data: Osservazione[]; meta: { totalPages: number } }>(
+      `/api/public/observations?name=${nome}&limit=100&page=${pagina}`
+    );
+    for (const osservazione of risposta.data) {
+      if (!tracce.has(osservazione.traceId)) continue;
+      const precedente = trovate.get(osservazione.traceId);
+      if (!precedente || (osservazione.startTime ?? "") > (precedente.startTime ?? "")) {
+        trovate.set(osservazione.traceId, osservazione);
+      }
+    }
+    if (pagina >= risposta.meta.totalPages) return trovate;
+  }
+}
+
+async function costruisciItem(
+  idTraccia: string,
+  idItemCoda: string,
+  osservazioni: Record<(typeof NOMI_OSSERVAZIONI)[number], OsservazioniPerTraccia>
+): Promise<ItemDaRivedere> {
+  const pipeline = osservazioni["pipeline-preventivo"].get(idTraccia);
+  const esecutore = osservazioni["esecutore"].get(idTraccia);
+  const giudiceAutomatico = osservazioni["giudice-automatico"].get(idTraccia);
+  const documento = osservazioni["documento-preventivo"].get(idTraccia);
 
   if (!pipeline || !esecutore || !giudiceAutomatico) {
     throw new Error(`Traccia ${idTraccia}: osservazioni attese mancanti`);
@@ -83,12 +123,12 @@ async function caricaItemDaCoda(idCoda: string): Promise<ItemDaRivedere | null> 
     verdetto_messaggio?: unknown;
   } | null;
 
-  let documentoUrl: string | null = null;
+  let idMediaDocumento: string | null = null;
   if (documento) {
     const idDocumento = documento.output as { documento?: unknown } | null;
     if (typeof idDocumento?.documento === "string") {
       const idMedia = idDocumento.documento.match(RIFERIMENTO_MEDIA)?.[1];
-      if (idMedia) documentoUrl = await risolviUrlMedia(idMedia);
+      if (idMedia) idMediaDocumento = idMedia;
     }
   }
 
@@ -100,7 +140,8 @@ async function caricaItemDaCoda(idCoda: string): Promise<ItemDaRivedere | null> 
     richiestaCliente: estraiRichiesta(pipeline, idTraccia),
     preventivo,
     messaggioCliente,
-    documentoUrl,
+    documentoUrl: null,
+    idMediaDocumento,
     verdettoPreventivo: estraiVerdetto(outputGiudice?.verdetto_preventivo, "verdetto_preventivo", idTraccia),
     verdettoMessaggio: estraiVerdetto(outputGiudice?.verdetto_messaggio, "verdetto_messaggio", idTraccia),
   };
@@ -160,11 +201,11 @@ async function scriviScore(
 
 /** Scrive i quattro score del giudizio umano (source ANNOTATION, a differenza di quelli
  * automatici scritti dal backend con source API) e marca l'item come completato in coda —
- * altrimenti resterebbe in cima e l'interfaccia mostrerebbe sempre lo stesso item. Il testo del
- * messaggio cliente eventualmente corretto dal giudice viene allegato come metadata allo score
- * 'verdetto_messaggio', altrimenti andrebbe perso: non c'è altro posto dove salvarlo. Restituisce
- * il prossimo item da rivedere (o null se la coda è ormai vuota). */
-export async function registraGiudizioUmano(giudizio: GiudizioUmano): Promise<ItemDaRivedere | null> {
+ * altrimenti ricomparirebbe al prossimo caricamento. Il testo del messaggio cliente eventualmente
+ * corretto dal revisore viene allegato come metadata allo score 'verdetto_messaggio', altrimenti
+ * andrebbe perso: non c'è altro posto dove salvarlo. */
+export async function registraGiudizioUmano(giudizio: GiudizioUmano): Promise<void> {
+  azzeraMemoriaCoda();
   const idCoda = await trovaIdCoda();
   const mappaConfig = await caricaMappaScoreConfig();
 
@@ -203,20 +244,10 @@ export async function registraGiudizioUmano(giudizio: GiudizioUmano): Promise<It
     metodo: "PATCH",
     corpo: { status: "COMPLETED" },
   });
-
-  return caricaItemDaCoda(idCoda);
 }
 
-type Osservazione = { name: string; input: unknown; output: unknown };
-
-async function caricaOsservazioni(idTraccia: string): Promise<Osservazione[]> {
-  const risposta = await chiamaApiLangfuse<{ observations: Osservazione[] }>(
-    `/api/public/traces/${idTraccia}`
-  );
-  return risposta.observations;
-}
-
-async function risolviUrlMedia(idMedia: string): Promise<string> {
+/** Risolto a richiesta e non per tutti gli item insieme: ogni lettura conta nel limite di richieste. */
+export async function risolviUrlDocumento(idMedia: string): Promise<string> {
   const risposta = await chiamaApiLangfuse<{ url: string }>(`/api/public/media/${idMedia}`);
   return risposta.url;
 }
@@ -248,12 +279,42 @@ function estraiVerdetto(verdetto: unknown, campo: string, idTraccia: string): Ve
   return v as Verdetto;
 }
 
-/** Combina le chiamate di sola lettura necessarie per mostrare il prossimo item della coda:
- * risolve la coda per nome, prende la traccia in cima (non ancora giudicata dall'umano),
- * ne legge le osservazioni di dominio e, se presente, risolve il riferimento media del
- * documento preventivo in un URL scaricabile. Restituisce `null` solo per lo stato legittimo
- * "coda vuota, nessun item da giudicare" — una coda mancante o dati malformati sono errori. */
-export async function caricaProssimoItemDaRivedere(): Promise<ItemDaRivedere | null> {
+/** Combina le chiamate di sola lettura necessarie per mostrare la coda: risolve la coda per nome,
+ * prende gli item non ancora giudicati dall'umano, ne legge le osservazioni di dominio e, se
+ * presente, tiene il riferimento media del documento preventivo.
+ * Restituisce un elenco vuoto solo per lo stato legittimo "nessun item da giudicare" — una coda
+ * mancante o dati malformati sono errori. */
+async function leggiCoda(): Promise<ItemDaRivedere[]> {
   const idCoda = await trovaIdCoda();
-  return caricaItemDaCoda(idCoda);
+  const inAttesa = await trovaItemCodaInAttesa(idCoda);
+  const visti = new Set<string>();
+  const unici = inAttesa.filter(({ idTraccia }) => !visti.has(idTraccia) && visti.add(idTraccia));
+  if (unici.length === 0) return [];
+
+  const osservazioni = {} as Record<(typeof NOMI_OSSERVAZIONI)[number], OsservazioniPerTraccia>;
+  for (const nome of NOMI_OSSERVAZIONI) osservazioni[nome] = await caricaOsservazioniPerNome(nome, visti);
+
+  const items: ItemDaRivedere[] = [];
+  for (const { idTraccia, idItemCoda } of unici) items.push(await costruisciItem(idTraccia, idItemCoda, osservazioni));
+  return items;
+}
+
+const DURATA_MEMORIA_MS = 30_000;
+let memoria: { letta: number; coda: Promise<ItemDaRivedere[]> } | null = null;
+
+/** Rilegge la coda solo se l'ultima lettura ha più di 30 secondi: più rendering ravvicinati della
+ * stessa pagina (o un ricaricamento) condividono la stessa lettura invece di consumare il limite. */
+export async function caricaItemDaRivedere(): Promise<ItemDaRivedere[]> {
+  if (!memoria || Date.now() - memoria.letta > DURATA_MEMORIA_MS) {
+    const coda = leggiCoda();
+    memoria = { letta: Date.now(), coda };
+    coda.catch(() => {
+      if (memoria?.coda === coda) memoria = null;
+    });
+  }
+  return memoria.coda;
+}
+
+export function azzeraMemoriaCoda(): void {
+  memoria = null;
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type {
+  EsitoUmano,
   GiudizioUmano,
   ItemDaRivedere,
   Verdetto as VerdettoTipo,
@@ -15,9 +16,8 @@ const RESA_ESITO: Record<VerdettoTipo["esito"], { etichetta: string; classe: str
   no: { etichetta: "Incoerente", classe: "pill-bad" },
 };
 
-const OPZIONI_ESITO: { valore: VerdettoTipo["esito"]; etichetta: string }[] = [
+const OPZIONI_ESITO: { valore: EsitoUmano; etichetta: string }[] = [
   { valore: "si", etichetta: "Sì" },
-  { valore: "da_rivedere", etichetta: "Da rivedere" },
   { valore: "no", etichetta: "No" },
 ];
 
@@ -26,7 +26,7 @@ const OPZIONI_ACCORDO: { valore: boolean; etichetta: string }[] = [
   { valore: false, etichetta: "No" },
 ];
 
-function commentoObbligatorioSoddisfatto(esito: VerdettoTipo["esito"] | null, commento: string): boolean {
+function commentoObbligatorioSoddisfatto(esito: EsitoUmano | null, commento: string): boolean {
   return esito === "si" || commento.trim() !== "";
 }
 
@@ -63,11 +63,13 @@ function GruppoScelte<T>({
   opzioni,
   valore,
   onCambia,
+  bloccato,
 }: {
   etichetta: string;
   opzioni: { valore: T; etichetta: string }[];
   valore: T | null;
   onCambia: (valore: T) => void;
+  bloccato: boolean;
 }) {
   return (
     <>
@@ -77,6 +79,7 @@ function GruppoScelte<T>({
           <button
             key={i}
             type="button"
+            disabled={bloccato}
             aria-pressed={valore === opzione.valore}
             className={valore === opzione.valore ? "selezionata" : ""}
             onClick={() => onCambia(opzione.valore)}
@@ -89,32 +92,73 @@ function GruppoScelte<T>({
   );
 }
 
+type Bozza = {
+  messaggioCliente: string;
+  esitoPreventivo: EsitoUmano | null;
+  commentoPreventivo: string;
+  accordoPreventivo: boolean | null;
+  esitoMessaggio: EsitoUmano | null;
+  commentoMessaggio: string;
+  accordoMessaggio: boolean | null;
+};
+
+type Stato = "da_giudicare" | "giudicato" | "inviato";
+
+function bozzaIniziale(item: ItemDaRivedere): Bozza {
+  return {
+    messaggioCliente: item.messaggioCliente,
+    esitoPreventivo: null,
+    commentoPreventivo: "",
+    accordoPreventivo: null,
+    esitoMessaggio: null,
+    commentoMessaggio: "",
+    accordoMessaggio: null,
+  };
+}
+
+/** Con "No" sul preventivo non c'è nulla da spedire: l'item si chiude senza mail. */
+function mailInviabile(bozza: Bozza): boolean {
+  return bozza.esitoPreventivo !== "no";
+}
+
+function etichettaStato(stato: Stato, bozza: Bozza): string {
+  if (stato === "da_giudicare") return "Da giudicare";
+  if (stato === "inviato") return "Mail inviata";
+  return mailInviabile(bozza) ? "Giudicato · mail da inviare" : "Giudicato · nessuna mail";
+}
+
+function concluso(stato: Stato, bozza: Bozza): boolean {
+  return stato === "inviato" || (stato === "giudicato" && !mailInviabile(bozza));
+}
+
 export function ItemDaRivedereView({
-  item,
+  items,
   catalogo,
   registraGiudizio,
+  risolviUrlDocumento,
 }: {
-  item: ItemDaRivedere;
+  items: ItemDaRivedere[];
   catalogo: VoceCatalogo[];
-  registraGiudizio: (giudizio: GiudizioUmano) => Promise<ItemDaRivedere | null>;
+  registraGiudizio: (giudizio: GiudizioUmano) => Promise<void>;
+  risolviUrlDocumento?: (idMedia: string) => Promise<string>;
 }) {
-  const [itemAttuale, setItemAttuale] = useState<ItemDaRivedere | null>(item);
+  const [ordine, setOrdine] = useState<string[]>(() => items.map((i) => i.idTraccia));
+  const [idAttuale, setIdAttuale] = useState<string | null>(items[0]?.idTraccia ?? null);
+  const [bozze, setBozze] = useState<Record<string, Bozza>>(() =>
+    Object.fromEntries(items.map((i) => [i.idTraccia, bozzaIniziale(i)]))
+  );
+  const [stati, setStati] = useState<Record<string, Stato>>(() =>
+    Object.fromEntries(items.map((i) => [i.idTraccia, "da_giudicare" as Stato]))
+  );
   const [scheda, setScheda] = useState<"tabella" | "documento">("tabella");
   const [catalogoVisibile, setCatalogoVisibile] = useState(false);
-
-  const [messaggioCliente, setMessaggioCliente] = useState(item.messaggioCliente);
-  const [esitoPreventivo, setEsitoPreventivo] = useState<VerdettoTipo["esito"] | null>(null);
-  const [commentoPreventivo, setCommentoPreventivo] = useState("");
-  const [accordoPreventivo, setAccordoPreventivo] = useState<boolean | null>(null);
-  const [esitoMessaggio, setEsitoMessaggio] = useState<VerdettoTipo["esito"] | null>(null);
-  const [commentoMessaggio, setCommentoMessaggio] = useState("");
-  const [accordoMessaggio, setAccordoMessaggio] = useState<boolean | null>(null);
-
-  const [mailConfermata, setMailConfermata] = useState(false);
   const [registrazioneInCorso, setRegistrazioneInCorso] = useState(false);
   const [erroreRegistrazione, setErroreRegistrazione] = useState<string | null>(null);
+  const [avviso, setAvviso] = useState<string | null>(null);
+  const [urlDocumenti, setUrlDocumenti] = useState<Record<string, string>>({});
 
-  if (!itemAttuale) {
+  const itemAttuale = items.find((i) => i.idTraccia === idAttuale);
+  if (!itemAttuale || !idAttuale) {
     return (
       <div className="stato-vuoto">
         <p>Nessun preventivo da rivedere al momento.</p>
@@ -122,30 +166,59 @@ export function ItemDaRivedereView({
     );
   }
 
-  const commentoPreventivoOk = commentoObbligatorioSoddisfatto(esitoPreventivo, commentoPreventivo);
-  const commentoMessaggioOk = commentoObbligatorioSoddisfatto(esitoMessaggio, commentoMessaggio);
+  const bozza = bozze[idAttuale];
+  const stato = stati[idAttuale];
+  const bloccato = stato !== "da_giudicare";
+
+  function aggiorna(modifiche: Partial<Bozza>) {
+    setBozze((precedenti) => ({ ...precedenti, [idAttuale!]: { ...precedenti[idAttuale!], ...modifiche } }));
+  }
+
   const giudizioCompleto =
-    esitoPreventivo !== null &&
-    commentoPreventivoOk &&
-    accordoPreventivo !== null &&
-    esitoMessaggio !== null &&
-    commentoMessaggioOk &&
-    accordoMessaggio !== null;
+    bozza.esitoPreventivo !== null &&
+    commentoObbligatorioSoddisfatto(bozza.esitoPreventivo, bozza.commentoPreventivo) &&
+    bozza.accordoPreventivo !== null &&
+    bozza.esitoMessaggio !== null &&
+    commentoObbligatorioSoddisfatto(bozza.esitoMessaggio, bozza.commentoMessaggio) &&
+    bozza.accordoMessaggio !== null;
 
   const totale = itemAttuale.preventivo.reduce((somma, riga) => somma + riga.totale, 0);
 
-  function passaAlProssimoItem(prossimo: ItemDaRivedere | null) {
-    setItemAttuale(prossimo);
+  async function apriDocumento() {
+    setScheda("documento");
+    const { idMediaDocumento } = itemAttuale!;
+    if (!idMediaDocumento || !risolviUrlDocumento || urlDocumenti[idAttuale!]) return;
+    const id = idAttuale!;
+    try {
+      const url = await risolviUrlDocumento(idMediaDocumento);
+      setUrlDocumenti((precedenti) => ({ ...precedenti, [id]: url }));
+    } catch {
+      // l'anteprima resta "non disponibile"; il revisore può riprovare riaprendo la scheda
+    }
+  }
+
+  function vaiA(id: string) {
+    setIdAttuale(id);
     setScheda("tabella");
     setCatalogoVisibile(false);
-    setMessaggioCliente(prossimo?.messaggioCliente ?? "");
-    setEsitoPreventivo(null);
-    setCommentoPreventivo("");
-    setAccordoPreventivo(null);
-    setEsitoMessaggio(null);
-    setCommentoMessaggio("");
-    setAccordoMessaggio(null);
-    setMailConfermata(false);
+    setErroreRegistrazione(null);
+    setAvviso(null);
+  }
+
+  /** Il primo item, nell'ordine dato, ancora da chiudere e diverso da `escludi`. */
+  function prossimoDaGestire(ordineDato: string[], statiDati: Record<string, Stato>, escludi: string): string | null {
+    return ordineDato.find((id) => id !== escludi && !concluso(statiDati[id], bozze[id])) ?? null;
+  }
+
+  const altroDaGestire = prossimoDaGestire(ordine, stati, idAttuale);
+  const tuttoConcluso = ordine.every((id) => concluso(stati[id], bozze[id]));
+
+  /** Non scrive nulla su Langfuse: l'item resta in coda e va in fondo all'elenco della sessione. */
+  function posticipa() {
+    const nuovoOrdine = [...ordine.filter((id) => id !== idAttuale), idAttuale!];
+    setOrdine(nuovoOrdine);
+    const prossimo = prossimoDaGestire(nuovoOrdine, stati, idAttuale!);
+    if (prossimo) vaiA(prossimo);
   }
 
   async function registra() {
@@ -153,18 +226,26 @@ export function ItemDaRivedereView({
     setRegistrazioneInCorso(true);
     setErroreRegistrazione(null);
     try {
-      const prossimo = await registraGiudizio({
+      await registraGiudizio({
         idTraccia: itemAttuale.idTraccia,
         idItemCoda: itemAttuale.idItemCoda,
-        esitoPreventivo,
-        commentoPreventivo,
-        accordoPreventivo: accordoPreventivo as boolean,
-        esitoMessaggio,
-        commentoMessaggio,
-        accordoMessaggio: accordoMessaggio as boolean,
-        messaggioClienteCorretto: messaggioCliente,
+        esitoPreventivo: bozza.esitoPreventivo as EsitoUmano,
+        commentoPreventivo: bozza.commentoPreventivo,
+        accordoPreventivo: bozza.accordoPreventivo as boolean,
+        esitoMessaggio: bozza.esitoMessaggio as EsitoUmano,
+        commentoMessaggio: bozza.commentoMessaggio,
+        accordoMessaggio: bozza.accordoMessaggio as boolean,
+        messaggioClienteCorretto: bozza.messaggioCliente,
       });
-      passaAlProssimoItem(prossimo);
+      const nuoviStati = { ...stati, [idAttuale!]: "giudicato" as Stato };
+      setStati(nuoviStati);
+      if (mailInviabile(bozza)) {
+        setAvviso("Giudizio registrato: ora si può inviare la mail.");
+      } else {
+        const prossimo = prossimoDaGestire(ordine, nuoviStati, idAttuale!);
+        if (prossimo) vaiA(prossimo);
+        setAvviso("Giudizio registrato. Con il preventivo «No» la mail non si invia.");
+      }
     } catch (errore) {
       setErroreRegistrazione(errore instanceof Error ? errore.message : "Registrazione non riuscita: riprovare.");
     } finally {
@@ -172,8 +253,37 @@ export function ItemDaRivedereView({
     }
   }
 
+  function inviaMail() {
+    const nuoviStati = { ...stati, [idAttuale!]: "inviato" as Stato };
+    setStati(nuoviStati);
+    const prossimo = prossimoDaGestire(ordine, nuoviStati, idAttuale!);
+    if (prossimo) vaiA(prossimo);
+    setAvviso("Mail inviata (simulata).");
+  }
+
   return (
     <div className="pagina">
+      <nav className="elenco-item" aria-label="Preventivi del lotto">
+        {ordine.map((id, posizione) => {
+          const item = items.find((i) => i.idTraccia === id)!;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-current={id === idAttuale ? "true" : undefined}
+              className={id === idAttuale ? "voce-elenco attiva" : "voce-elenco"}
+              onClick={() => vaiA(id)}
+            >
+              <span className="voce-titolo">
+                {posizione + 1}. {item.richiestaCliente}
+              </span>
+              <span className="voce-stato">{etichettaStato(stati[id], bozze[id])}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {tuttoConcluso && <p className="testo-conferma-lotto">Tutti i preventivi sono stati gestiti.</p>}
+
       <div className="colonne">
         <section className="pannello" aria-label="Richiesta cliente">
           <h2>Richiesta cliente</h2>
@@ -196,7 +306,7 @@ export function ItemDaRivedereView({
               type="button"
               aria-selected={scheda === "documento"}
               className={scheda === "documento" ? "scheda-btn attiva" : "scheda-btn"}
-              onClick={() => setScheda("documento")}
+              onClick={apriDocumento}
             >
               Documento
             </button>
@@ -227,8 +337,11 @@ export function ItemDaRivedereView({
             </div>
           ) : (
             <div className="anteprima-documento">
-              {itemAttuale.documentoUrl ? (
-                <iframe src={itemAttuale.documentoUrl} title="Anteprima documento preventivo" />
+              {(itemAttuale.documentoUrl ?? urlDocumenti[idAttuale]) ? (
+                <iframe
+                  src={(itemAttuale.documentoUrl ?? urlDocumenti[idAttuale])!}
+                  title="Anteprima documento preventivo"
+                />
               ) : (
                 <p className="muto">Anteprima del documento non disponibile.</p>
               )}
@@ -249,19 +362,22 @@ export function ItemDaRivedereView({
           <GruppoScelte
             etichetta="Giudizio preventivo"
             opzioni={OPZIONI_ESITO}
-            valore={esitoPreventivo}
-            onCambia={setEsitoPreventivo}
+            valore={bozza.esitoPreventivo}
+            onCambia={(v) => aggiorna({ esitoPreventivo: v })}
+            bloccato={bloccato}
           />
           <textarea
-            placeholder="Commento (obbligatorio se non è 'Sì')"
-            value={commentoPreventivo}
-            onChange={(e) => setCommentoPreventivo(e.target.value)}
+            placeholder="Commento (obbligatorio se la risposta è 'No')"
+            value={bozza.commentoPreventivo}
+            disabled={bloccato}
+            onChange={(e) => aggiorna({ commentoPreventivo: e.target.value })}
           />
           <GruppoScelte
             etichetta="D'accordo col giudice automatico sul preventivo?"
             opzioni={OPZIONI_ACCORDO}
-            valore={accordoPreventivo}
-            onCambia={setAccordoPreventivo}
+            valore={bozza.accordoPreventivo}
+            onCambia={(v) => aggiorna({ accordoPreventivo: v })}
+            bloccato={bloccato}
           />
         </section>
 
@@ -269,43 +385,60 @@ export function ItemDaRivedereView({
           <h3>Messaggio cliente</h3>
           <textarea
             className="msg-box"
-            value={messaggioCliente}
-            onChange={(e) => setMessaggioCliente(e.target.value)}
+            value={bozza.messaggioCliente}
+            disabled={bloccato}
+            onChange={(e) => aggiorna({ messaggioCliente: e.target.value })}
           />
           <GruppoScelte
             etichetta="Giudizio messaggio"
             opzioni={OPZIONI_ESITO}
-            valore={esitoMessaggio}
-            onCambia={setEsitoMessaggio}
+            valore={bozza.esitoMessaggio}
+            onCambia={(v) => aggiorna({ esitoMessaggio: v })}
+            bloccato={bloccato}
           />
           <textarea
-            placeholder="Commento (obbligatorio se non è 'Sì')"
-            value={commentoMessaggio}
-            onChange={(e) => setCommentoMessaggio(e.target.value)}
+            placeholder="Commento (obbligatorio se la risposta è 'No')"
+            value={bozza.commentoMessaggio}
+            disabled={bloccato}
+            onChange={(e) => aggiorna({ commentoMessaggio: e.target.value })}
           />
           <GruppoScelte
             etichetta="D'accordo col giudice automatico sul messaggio?"
             opzioni={OPZIONI_ACCORDO}
-            valore={accordoMessaggio}
-            onCambia={setAccordoMessaggio}
+            valore={bozza.accordoMessaggio}
+            onCambia={(v) => aggiorna({ accordoMessaggio: v })}
+            bloccato={bloccato}
           />
         </section>
       </div>
 
       {erroreRegistrazione && <p className="testo-errore">{erroreRegistrazione}</p>}
-      {mailConfermata && <p className="testo-conferma">Mail inviata (simulata).</p>}
+      {avviso && <p className="testo-conferma">{avviso}</p>}
 
       <div className="barra-azioni">
-        <button type="button" className="send-btn" onClick={() => setMailConfermata(true)}>
-          Invia mail
+        <button
+          type="button"
+          className="posticipa-btn"
+          disabled={stato !== "da_giudicare" || !altroDaGestire}
+          onClick={posticipa}
+        >
+          Posticipa
         </button>
         <button
           type="button"
           className="submit-btn"
-          disabled={!giudizioCompleto || registrazioneInCorso}
+          disabled={stato !== "da_giudicare" || !giudizioCompleto || registrazioneInCorso}
           onClick={registra}
         >
-          {registrazioneInCorso ? "Registrazione in corso…" : "Registra giudizio e passa al prossimo"}
+          {registrazioneInCorso ? "Registrazione in corso…" : "Registra giudizio"}
+        </button>
+        <button
+          type="button"
+          className="send-btn"
+          disabled={stato !== "giudicato" || !mailInviabile(bozza)}
+          onClick={inviaMail}
+        >
+          Invia mail
         </button>
       </div>
     </div>

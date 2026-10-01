@@ -1,13 +1,13 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, expect, it, afterEach, beforeEach } from "vitest";
 
 import { TutorialPopup } from "../components/TutorialPopup";
 import { datiDemo, registraGiudizioDemo } from "../lib/demo";
 import Pagina from "../app/page";
 
-describe("dati e ciclo demo", () => {
-  it("cicla al prossimo item demo e torna al primo dopo l'ultimo", async () => {
-    const secondo = await registraGiudizioDemo({
+describe("dati e scrittura demo", () => {
+  it("registrare un giudizio in demo non scrive e non restituisce nulla", async () => {
+    const esito = await registraGiudizioDemo({
       idTraccia: datiDemo[0].idTraccia,
       idItemCoda: datiDemo[0].idItemCoda,
       esitoPreventivo: "si",
@@ -18,20 +18,7 @@ describe("dati e ciclo demo", () => {
       accordoMessaggio: true,
       messaggioClienteCorretto: datiDemo[0].messaggioCliente,
     });
-    expect(secondo?.idTraccia).toBe(datiDemo[1].idTraccia);
-
-    const primoDiNuovo = await registraGiudizioDemo({
-      idTraccia: datiDemo[datiDemo.length - 1].idTraccia,
-      idItemCoda: datiDemo[datiDemo.length - 1].idItemCoda,
-      esitoPreventivo: "si",
-      commentoPreventivo: "",
-      accordoPreventivo: true,
-      esitoMessaggio: "si",
-      commentoMessaggio: "",
-      accordoMessaggio: true,
-      messaggioClienteCorretto: "",
-    });
-    expect(primoDiNuovo?.idTraccia).toBe(datiDemo[0].idTraccia);
+    expect(esito).toBeUndefined();
   });
 });
 
@@ -54,11 +41,15 @@ describe("modalità demo della pagina", () => {
     if (originali.secretKey) process.env.LANGFUSE_SECRET_KEY = originali.secretKey;
   });
 
-  it("senza credenziali Langfuse mostra il banner demo e il primo item fittizio", async () => {
+  it("senza credenziali Langfuse mostra il banner demo e tutti e quattro gli item fittizi nell'elenco", async () => {
     render(await Pagina());
 
     expect(screen.getByText(/Modalità demo/)).toBeInTheDocument();
-    expect(screen.getByText(datiDemo[0].richiestaCliente)).toBeInTheDocument();
+    expect(datiDemo).toHaveLength(4);
+    const elenco = screen.getByRole("navigation", { name: "Preventivi del lotto" });
+    for (const item of datiDemo) {
+      expect(within(elenco).getByText(item.richiestaCliente, { exact: false })).toBeInTheDocument();
+    }
   });
 });
 

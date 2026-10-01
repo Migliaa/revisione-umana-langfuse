@@ -191,10 +191,7 @@ export const datiDemo: ItemDaRivedere[] = [
   }
 ];
 
-/** Nessuna scrittura reale: cicla sui dati della demo, così non finisce mai e nessun visitatore
- * scrive per sbaglio su un progetto Langfuse vero. */
-export async function registraGiudizioDemo(giudizio: GiudizioUmano): Promise<ItemDaRivedere | null> {
-  const indiceAttuale = datiDemo.findIndex((item) => item.idTraccia === giudizio.idTraccia);
-  const prossimo = datiDemo[(indiceAttuale + 1) % datiDemo.length];
-  return prossimo;
+/** Nessuna scrittura reale: nessun visitatore scrive per sbaglio su un progetto Langfuse vero. */
+export async function registraGiudizioDemo(giudizio: GiudizioUmano): Promise<void> {
+  void giudizio;
 }

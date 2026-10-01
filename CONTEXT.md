@@ -41,8 +41,8 @@ del ruolo nel dominio), giudice (ambiguo con giudice umano)
 **Giudice umano**:
 La persona non tecnica che rivede richiesta, preventivo, documento preventivo, messaggio cliente
 e i due verdetti del giudice automatico tramite l'interfaccia "giudice". Dà **due verdetti
-distinti** (uno sul preventivo, uno sul messaggio cliente, ciascuno sì/no/da rivedere + commento
-se non sì) e due giudizi di accordo separati col giudice automatico (uno per dimensione) — non un
+distinti** (uno sul preventivo, uno sul messaggio cliente, ciascuno sì/no + commento
+obbligatorio se no) e due giudizi di accordo separati col giudice automatico (uno per dimensione) — non un
 verdetto unico sull'insieme. Il suo giudizio è il termine di paragone sia per l'esecutore sia per
 il giudice automatico, dimensione per dimensione. Non è solo un revisore: è anche l'addetto che
 userebbe questa stessa schermata per il proprio lavoro reale (rivedere ed eventualmente correggere
@@ -131,8 +131,9 @@ tecnico ma non come nome primario)
 - **Variante di layout scelta: "tre colonne + area di lavoro"** — riga superiore con tre colonne
   di sola lettura (richiesta, preventivo a schede tabella/documento, i due verdetti automatici);
   sotto, un'area di lavoro divisa in due blocchi (giudizio sul preventivo; messaggio cliente
-  editabile + giudizio sul messaggio); in fondo una barra con "Invia mail" e "Registra giudizio e
-  passa al prossimo". Preferita alle altre due varianti provate (stack mobile a card; annotazione
+  editabile + giudizio sul messaggio); in alto un elenco dei preventivi in coda con il loro stato; in fondo una barra con
+  "Posticipa", "Registra giudizio" e "Invia mail" (disabilitato prima della registrazione e con "No"
+  sul preventivo). Preferita alle altre due varianti provate (stack mobile a card; annotazione
   inline riga per riga) perché il giudice umano qui usa lo strumento come lavoro vero più volte al
   giorno da postazione fissa, non come controllo rapido da telefono: separare chiaramente "cosa
   guardo" (le tre colonne) da "cosa faccio" (l'area di lavoro sotto) regge meglio quando i campi

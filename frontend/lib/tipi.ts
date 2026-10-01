@@ -10,6 +10,9 @@ export type Verdetto = {
   testo: string;
 };
 
+/** Il revisore umano risponde solo sì o no; "da rivedere" esiste solo come esito del giudice automatico. */
+export type EsitoUmano = "si" | "no";
+
 export type ItemDaRivedere = {
   idTraccia: string;
   idItemCoda: string;
@@ -17,6 +20,8 @@ export type ItemDaRivedere = {
   preventivo: RigaPreventivo[];
   messaggioCliente: string;
   documentoUrl: string | null;
+  /** Riferimento al PDF su Langfuse, risolto in un URL solo quando il revisore apre la scheda Documento. */
+  idMediaDocumento?: string | null;
   verdettoPreventivo: Verdetto;
   verdettoMessaggio: Verdetto;
 };
@@ -30,10 +35,10 @@ export type VoceCatalogo = {
 export type GiudizioUmano = {
   idTraccia: string;
   idItemCoda: string;
-  esitoPreventivo: Verdetto["esito"];
+  esitoPreventivo: EsitoUmano;
   commentoPreventivo: string;
   accordoPreventivo: boolean;
-  esitoMessaggio: Verdetto["esito"];
+  esitoMessaggio: EsitoUmano;
   commentoMessaggio: string;
   accordoMessaggio: boolean;
   messaggioClienteCorretto: string;
